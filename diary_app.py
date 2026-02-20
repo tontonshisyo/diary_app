@@ -19,6 +19,7 @@ DB_FILE = "diary.db"
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 c = conn.cursor()
 
+# ユーザーテーブル
 c.execute("""
 CREATE TABLE IF NOT EXISTS users (
     username TEXT PRIMARY KEY,
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
+# 日記テーブル
 c.execute("""
 CREATE TABLE IF NOT EXISTS diaries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,50 +95,56 @@ if "logged_in" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = ""
 if "step" not in st.session_state:
-    st.session_state.step = "login"
+    st.session_state.step = "input_summary"
 if "summary" not in st.session_state:
     st.session_state.summary = ""
 if "first_questions" not in st.session_state:
     st.session_state.first_questions = []
 if "first_answers" not in st.session_state:
     st.session_state.first_answers = []
+if "deep_questions" not in st.session_state:
+    st.session_state.deep_questions = []
+if "deep_answers" not in st.session_state:
+    st.session_state.deep_answers = []
 if "diary" not in st.session_state:
     st.session_state.diary = ""
 
 # =============================
-# ログイン / 登録画面
+# ログイン処理
 # =============================
+st.markdown('<div class="card">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">🔐 ログイン / 新規登録</div>', unsafe_allow_html=True)
+
+username_input = st.text_input("ユーザー名", key="login_username")
+password_input = st.text_input("パスワード", type="password", key="login_password")
+
+col1, col2 = st.columns(2)
+with col1:
+    login = st.button("ログイン", key="login_button")
+with col2:
+    register = st.button("新規登録", key="register_button")
+
+if login:
+    if check_user(username_input, password_input):
+        st.session_state.logged_in = True
+        st.session_state.username = username_input
+        st.session_state.step = "input_summary"
+        st.success("ログイン成功！")
+        st.experimental_rerun()
+    else:
+        st.error("ユーザー名またはパスワードが違います")
+
+if register:
+    c.execute("SELECT username FROM users WHERE username=?", (username_input,))
+    if c.fetchone():
+        st.error("そのユーザー名は既に存在します")
+    else:
+        register_user(username_input, password_input)
+        st.success("登録完了！ログインしてください")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
 if not st.session_state.logged_in:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔐 ログイン / 新規登録</div>', unsafe_allow_html=True)
-
-    username_input = st.text_input("ユーザー名", key="login_username")
-    password_input = st.text_input("パスワード", type="password", key="login_password")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        login_btn = st.button("ログイン")
-    with col2:
-        register_btn = st.button("新規登録")
-
-    if login_btn:
-        if check_user(username_input, password_input):
-            st.session_state.logged_in = True
-            st.session_state.username = username_input
-            st.session_state.step = "input_summary"
-            st.success("ログイン成功！")
-        else:
-            st.error("ユーザー名またはパスワードが違います")
-
-    if register_btn:
-        c.execute("SELECT username FROM users WHERE username=?", (username_input,))
-        if c.fetchone():
-            st.error("そのユーザー名は既に存在します")
-        else:
-            register_user(username_input, password_input)
-            st.success("登録完了！ログインしてください")
-
-    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # =============================
@@ -146,47 +154,64 @@ if st.session_state.step == "input_summary":
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">📝 今日の出来事</div>', unsafe_allow_html=True)
 
-    summary_input = st.text_area(
+    summary = st.text_area(
         "",
         placeholder="例）友達とカフェに行った。部活が大変だった…",
         height=120,
-        key="summary_input_area"
+        key="summary_input"
     )
 
     col1, col2 = st.columns(2)
     with col1:
-        gen_q_btn = st.button("✍️ 質問を作る")
+        generate_questions = st.button("✍️ 質問を作る", key="generate_first_questions")
     with col2:
-        gen_diary_btn = st.button("📓 そのまま日記生成")
+        generate_diary_direct = st.button("📓 そのまま日記生成", key="generate_diary_direct")
 
-    if gen_q_btn and summary_input.strip():
-        st.session_state.summary = summary_input
+    if generate_questions and summary.strip():
+        st.session_state.summary = summary
         with st.spinner("質問生成中..."):
-            prompt = f"出来事: {summary_input}\n基本的な質問を4つ作ってください。"
+            prompt = f"""
+出来事: {summary}
+
+この出来事を日記にするための基本的な質問を作ってください。
+「何をした」「誰と話した」「印象に残った出来事は」「気持ちはどうだった」など、事実を聞く質問を4つ作ってください。
+"""
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
-            questions_text = response.choices[0].message["content"]
+            # 修正版：属性アクセス
+            questions_text = response.choices[0].message.content
             st.session_state.first_questions = [
                 q.strip("0123456789. ").strip()
                 for q in questions_text.split("\n") if q.strip()
             ]
             st.session_state.first_answers = [""] * len(st.session_state.first_questions)
             st.session_state.step = "first_q"
+        st.experimental_rerun()
 
-    if gen_diary_btn and summary_input.strip():
-        st.session_state.summary = summary_input
+    if generate_diary_direct and summary.strip():
+        st.session_state.summary = summary
         with st.spinner("日記生成中..."):
-            prompt = f"出来事: {summary_input}\n感情や空気感も含めた日記を書いてください。"
+            diary_prompt = f"""
+出来事: {summary}
+
+この出来事を元に、今日の感情や空気感も含めた日記を書いてください。
+・出来事を整理するだけでなく、空気や感情が伝わる文章にしてください。
+・その時の言葉や思考も自然に含めてください。
+・身体の感覚や音・空気感も描写してください。
+・少し迷いや揺れを残す文章にしてください。
+・未来の自分が読んで情景を思い出せる文章にしてください。
+"""
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": diary_prompt}],
             )
-            st.session_state.diary = response.choices[0].message["content"]
+            st.session_state.diary = response.choices[0].message.content
             save_diary(st.session_state.username, st.session_state.diary)
             st.session_state.step = "diary"
-            st.success("日記を保存しました！")
+        st.success("日記を保存しました！")
+        st.experimental_rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -198,10 +223,20 @@ st.markdown('<div class="section-title">📚 過去の日記</div>', unsafe_allo
 
 user_diaries = load_user_diaries(st.session_state.username)
 if user_diaries:
-    dates = [d[0] for d in user_diaries]
-    selected_date = st.selectbox("", dates)
+    sorted_dates = [d[0] for d in user_diaries]
+    selected_date = st.selectbox(
+        "",
+        sorted_dates,
+        key="selected_date"
+    )
     diary_text = next(content for dt, content in user_diaries if dt == selected_date)
-    st.text_area("", value=diary_text, height=200)
+
+    st.text_area(
+        "",
+        value=diary_text,
+        height=200,
+        key="past_diary_view"
+    )
 else:
     st.info("まだ日記がありません。")
 
