@@ -24,7 +24,8 @@ def save_diaries(diaries):
         json.dump(diaries, f, ensure_ascii=False, indent=2)
 
 # Streamlit UI設定
-st.set_page_config(page_title="日記生成アプリ", layout="centered")
+st.set_page_config(page_title="AI Diary", layout="centered")
+
 st.markdown("""
 <style>
 
@@ -67,10 +68,27 @@ textarea {
     border-radius: 15px !important;
 }
 
+/* セクションタイトル */
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-# 日記データの初期化
+# アプリタイトル
+st.markdown("""
+<h1 style='text-align:center; font-weight:800; margin-bottom:0;'>
+🌙 AI Diary
+</h1>
+<p style='text-align:center; opacity:0.7; margin-top:5px; margin-bottom:30px;'>
+今日の気持ちを、物語に。
+</p>
+""", unsafe_allow_html=True)
+
+# セッション初期化
 if "questions" not in st.session_state:
     st.session_state.questions = []
 if "qna" not in st.session_state:
@@ -80,8 +98,16 @@ if "diary" not in st.session_state:
 if "saved_diaries" not in st.session_state:
     st.session_state.saved_diaries = load_diaries()
 
-# 出来事入力
-summary = st.text_area("今日の出来事をざっくり入力してください:")
+# ===== 出来事入力 =====
+st.markdown('<div class="card">', unsafe_allow_html=True)
+
+st.markdown('<div class="section-title">📝 今日の出来事</div>', unsafe_allow_html=True)
+
+summary = st.text_area(
+    "",
+    placeholder="例）友達とカフェに行った。テストが返ってきた。部活が大変だった…",
+    height=120
+)
 
 if st.button("✍️ 質問を作る") and summary.strip():
     with st.spinner("🤖 質問を生成中..."):
@@ -95,16 +121,25 @@ if st.button("✍️ 質問を作る") and summary.strip():
             messages=[{"role": "user", "content": prompt}],
         )
         questions_text = response.choices[0].message.content
-        st.session_state.questions = [q.strip("0123456789. ").strip() for q in questions_text.split("\n") if q.strip()]
+        st.session_state.questions = [
+            q.strip("0123456789. ").strip()
+            for q in questions_text.split("\n")
+            if q.strip()
+        ]
         st.success("✅ 質問を作成しました！")
 
-# 質問に回答
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ===== 質問回答 =====
 if st.session_state.questions:
-    st.subheader("📝 質問に答えてください：")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📝 質問に答えてください</div>', unsafe_allow_html=True)
+
     answers = []
     for i, q in enumerate(st.session_state.questions):
-        a = st.text_area(f"{q}", key=f"answer_{i}")
+        a = st.text_area(q, key=f"answer_{i}")
         answers.append((q, a))
+
     st.session_state.qna = answers
 
     if st.button("📓 日記を生成する"):
@@ -123,28 +158,49 @@ if st.session_state.questions:
             diary = diary_response.choices[0].message.content
             st.session_state.diary = diary
 
-            # 保存
             today = datetime.today().strftime("%Y-%m-%d %H:%M")
             st.session_state.saved_diaries[today] = diary
             save_diaries(st.session_state.saved_diaries)
 
             st.success("✅ 日記が生成され、保存されました！")
 
-# 結果表示
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ===== 日記表示 =====
 if st.session_state.diary:
-    st.subheader("📘 あなたの日記：")
-    edited_diary = st.text_area("日記の内容を編集できます：", value=st.session_state.diary, height=200)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📘 あなたの日記</div>', unsafe_allow_html=True)
+
+    edited_diary = st.text_area(
+        "",
+        value=st.session_state.diary,
+        height=200
+    )
     st.session_state.diary = edited_diary
 
-    if st.download_button("💾 日記を保存する（テキストファイル）", st.session_state.diary, file_name="my_diary.txt"):
-        st.success("✅ 保存しました！")
+    st.download_button(
+        "💾 日記を保存する（テキストファイル）",
+        st.session_state.diary,
+        file_name="my_diary.txt"
+    )
 
-# 過去日記の表示
-st.subheader("📚 過去の日記を見る")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ===== 過去日記 =====
+st.markdown('<div class="card">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📚 過去の日記</div>', unsafe_allow_html=True)
+
 if st.session_state.saved_diaries:
-    selected_date = st.selectbox("日付を選択してください", list(st.session_state.saved_diaries.keys())[::-1])
-    st.text_area("選択した日記：", value=st.session_state.saved_diaries[selected_date], height=200)
+    selected_date = st.selectbox(
+        "",
+        list(st.session_state.saved_diaries.keys())[::-1]
+    )
+    st.text_area(
+        "",
+        value=st.session_state.saved_diaries[selected_date],
+        height=200
+    )
 else:
     st.info("まだ保存された日記がありません。")
 
-
+st.markdown('</div>', unsafe_allow_html=True)
