@@ -7,7 +7,7 @@ from datetime import datetime
 
 # 環境変数からAPIキーを読み込む
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # 保存用ファイル
 DIARY_FILE = "saved_diaries.json"
@@ -103,3 +103,4 @@ if st.session_state.saved_diaries:
     st.text_area("選択した日記：", value=st.session_state.saved_diaries[selected_date], height=200)
 else:
     st.info("まだ保存された日記がありません。")
+
