@@ -129,9 +129,15 @@ if st.button("✍️ 質問を作る", key="generate_questions"):
             prompt = f"""
 出来事: {summary}
 
-日記作成用に出来事に対する具体的な質問を4つ作成。
-その時の会話・感情・身体/空気感・迷いを引き出す質問を各1問。
-抽象禁止。情景が浮かぶ形で、1問1文。
+この出来事を日記にするための質問を4つ作ってください。
+以下をそれぞれ1問ずつ含めてください：
+・具体的な会話や言葉
+・その瞬間の感情
+・身体や空気感
+・迷いや考えていたこと
+
+抽象的にせず、情景が浮かぶ問いにしてください。
+各質問は1文で簡潔に。
 """
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -249,3 +255,4 @@ else:
     st.info("まだ日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
