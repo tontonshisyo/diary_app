@@ -54,7 +54,7 @@ st.markdown("""
     font-size: 16px;
     font-weight: 600;
     background: linear-gradient(90deg,#6a5acd,#00c9ff) !important;
-    color: white !important;
+    color: black !important;
     border: none !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
@@ -216,5 +216,6 @@ else:
     st.info("まだ保存された日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
 
