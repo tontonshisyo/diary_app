@@ -106,9 +106,11 @@ if st.session_state.username not in diaries:
 if "questions" not in st.session_state:
     st.session_state.questions = []
 if "answers" not in st.session_state:
-    st.session_state.answers = [""] * 4
+    st.session_state.answers = []
 if "diary" not in st.session_state:
     st.session_state.diary = ""
+if "generate_diary_flag" not in st.session_state:
+    st.session_state.generate_diary_flag = False
 
 # =============================
 # 今日の出来事
@@ -149,7 +151,7 @@ if st.button("✍️ 質問を作る", key="generate_questions"):
                 for q in questions_text.split("\n")
                 if q.strip()
             ]
-            st.session_state.answers = [""] * len(st.session_state.questions)  # 初期化
+            st.session_state.answers = [""] * len(st.session_state.questions)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -160,7 +162,6 @@ if st.session_state.questions:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">📝 質問に答えてください</div>', unsafe_allow_html=True)
 
-    # text_area をセッションステートと連携
     for i, q in enumerate(st.session_state.questions):
         st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
         st.session_state.answers[i] = st.text_area(
@@ -170,6 +171,10 @@ if st.session_state.questions:
         )
 
     if st.button("📓 日記を生成する", key="generate_diary"):
+        st.session_state.generate_diary_flag = True
+
+    # フラグが立っていたら日記生成
+    if st.session_state.generate_diary_flag:
         with st.spinner("生成中..."):
             qna_text = "\n".join([f"{q} {a}" for q, a in zip(st.session_state.questions, st.session_state.answers)])
             diary_prompt = f"""
@@ -201,7 +206,8 @@ if st.session_state.questions:
             diaries[st.session_state.username][today] = st.session_state.diary
             save_json(DIARY_FILE, diaries)
 
-            st.success("日記を保存しました！")
+        st.session_state.generate_diary_flag = False
+        st.success("日記を保存しました！")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -237,7 +243,6 @@ st.markdown('<div class="section-title">📚 過去の日記</div>', unsafe_allo
 user_diaries = diaries.get(st.session_state.username, {})
 
 if user_diaries:
-    # 日付順（降順）にソート
     sorted_dates = sorted(user_diaries.keys(), reverse=True)
     selected_date = st.selectbox(
         "",
@@ -255,4 +260,3 @@ else:
     st.info("まだ日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
-
