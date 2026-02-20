@@ -137,8 +137,8 @@ if st.session_state.questions:
 
     answers = []
     for i, q in enumerate(st.session_state.questions):
-    st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
-    a = st.text_area("", key=f"answer_{i}")
+        st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
+        a = st.text_area("", key=f"answer_{i}")
         answers.append((q, a))
 
     st.session_state.qna = answers
@@ -205,4 +205,5 @@ else:
     st.info("まだ保存された日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
