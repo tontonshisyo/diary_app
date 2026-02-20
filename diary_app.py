@@ -45,12 +45,10 @@ st.markdown("""
     background: linear-gradient(135deg, #1e1e2f, #2b2b45);
     color: white;
 }
-
 .block-container {
     max-width: 480px;
     padding-top: 2rem;
 }
-
 .card {
     background: rgba(255,255,255,0.05);
     padding: 20px;
@@ -59,13 +57,11 @@ st.markdown("""
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     margin-bottom: 20px;
 }
-
 .section-title {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 10px;
 }
-
 .stButton > button,
 .stDownloadButton > button {
     width: 100%;
@@ -76,14 +72,7 @@ st.markdown("""
     background: linear-gradient(90deg,#6a5acd,#00c9ff) !important;
     color: white !important;
     border: none !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-
-.stButton > button:hover,
-.stDownloadButton > button:hover {
-    background: linear-gradient(90deg,#7b6cff,#33d6ff) !important;
-}
-
 .stTextArea textarea {
     border-radius: 15px !important;
     background-color: white !important;
@@ -96,12 +85,8 @@ st.markdown("""
 # タイトル
 # =============================
 st.markdown("""
-<h1 style='text-align:center; font-weight:800; margin-bottom:0;'>
-🌙 AI Diary
-</h1>
-<p style='text-align:center; opacity:0.7; margin-top:5px; margin-bottom:30px;'>
-今日の気持ちを、物語に。
-</p>
+<h1 style='text-align:center; font-weight:800;'>🌙 AI Diary</h1>
+<p style='text-align:center; opacity:0.7;'>今日の気持ちを、物語に。</p>
 """, unsafe_allow_html=True)
 
 # =============================
@@ -112,15 +97,14 @@ users = load_json(USER_FILE)
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">🔐 ログイン / 新規登録</div>', unsafe_allow_html=True)
 
-username = st.text_input("ユーザー名")
-password = st.text_input("パスワード", type="password")
+username = st.text_input("ユーザー名", key="login_username")
+password = st.text_input("パスワード", type="password", key="login_password")
 
 col1, col2 = st.columns(2)
-
 with col1:
-    login = st.button("ログイン")
+    login = st.button("ログイン", key="login_button")
 with col2:
-    register = st.button("新規登録")
+    register = st.button("新規登録", key="register_button")
 
 if login:
     if username in users and users[username] == hash_password(password):
@@ -144,14 +128,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 # =============================
-# ログイン後
+# ログイン後処理
 # =============================
-st.markdown(f"""
-<div style='text-align:center; margin-bottom:20px; opacity:0.8;'>
-👤 {st.session_state.username} でログイン中
-</div>
-""", unsafe_allow_html=True)
-
 diaries = load_json(DIARY_FILE)
 if st.session_state.username not in diaries:
     diaries[st.session_state.username] = {}
@@ -170,27 +148,28 @@ st.markdown('<div class="section-title">📝 今日の出来事</div>', unsafe_a
 summary = st.text_area(
     "",
     placeholder="例）友達とカフェに行った。部活が大変だった…",
-    height=120
+    height=120,
+    key="summary_input"
 )
 
-if st.button("✍️ 質問を作る") and summary.strip():
-    with st.spinner("質問生成中..."):
-        prompt = f"""
+if st.button("✍️ 質問を作る", key="generate_questions"):
+    if summary.strip():
+        with st.spinner("質問生成中..."):
+            prompt = f"""
 以下の出来事を日記に書くために、質問を3つ作ってください。
 出来事: {summary}
-質問は感情や背景を引き出すものにしてください。
+感情や背景を引き出す質問にしてください。
 """
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        questions_text = response.choices[0].message.content
-        st.session_state.questions = [
-            q.strip("0123456789. ").strip()
-            for q in questions_text.split("\n")
-            if q.strip()
-        ]
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            questions_text = response.choices[0].message.content
+            st.session_state.questions = [
+                q.strip("0123456789. ").strip()
+                for q in questions_text.split("\n")
+                if q.strip()
+            ]
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -207,7 +186,7 @@ if st.session_state.questions:
         a = st.text_area("", key=f"answer_{i}")
         answers.append((q, a))
 
-    if st.button("📓 日記を生成する"):
+    if st.button("📓 日記を生成する", key="generate_diary"):
         with st.spinner("生成中..."):
             qna_text = "\n".join([f"{q} {a}" for q, a in answers])
             diary_prompt = f"""
@@ -219,12 +198,10 @@ if st.session_state.questions:
 自然で感情のこもった日記を書いてください。
 です・ます調で。
 """
-
             diary_response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": diary_prompt}],
             )
-
             diary = diary_response.choices[0].message.content
             st.session_state.diary = diary
 
@@ -243,13 +220,18 @@ if st.session_state.diary:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">📘 あなたの日記</div>', unsafe_allow_html=True)
 
-    edited = st.text_area("", value=st.session_state.diary, height=200)
-    st.session_state.diary = edited
+    edited = st.text_area(
+        "",
+        value=st.session_state.diary,
+        height=200,
+        key="current_diary_edit"
+    )
 
     st.download_button(
         "💾 日記を保存する（テキストファイル）",
         edited,
-        file_name="my_diary.txt"
+        file_name="my_diary.txt",
+        key="download_button"
     )
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -265,13 +247,15 @@ user_diaries = diaries[st.session_state.username]
 if user_diaries:
     selected_date = st.selectbox(
         "",
-        list(user_diaries.keys())[::-1]
+        list(user_diaries.keys())[::-1],
+        key="selected_date"
     )
 
     st.text_area(
         "",
         value=user_diaries[selected_date],
-        height=200
+        height=200,
+        key="past_diary_view"
     )
 else:
     st.info("まだ日記がありません。")
