@@ -81,6 +81,21 @@ st.markdown("""
     font-weight: 600;
     margin-bottom: 8px;
 }
+.stDownloadButton > button {
+    width: 100%;
+    border-radius: 15px;
+    height: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(90deg,#6a5acd,#00c9ff) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.stDownloadButton > button:hover {
+    background: linear-gradient(90deg,#7b6cff,#33d6ff) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -216,6 +231,7 @@ else:
     st.info("まだ保存された日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
