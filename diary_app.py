@@ -224,13 +224,13 @@ if st.session_state.saved_diaries:
     st.text_area(
         "",
         value=st.session_state.saved_diaries[selected_date],
-        height=200,
-        key="past_diary_view"
+        height=200
     )
 else:
     st.info("まだ保存された日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
