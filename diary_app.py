@@ -25,7 +25,50 @@ def save_diaries(diaries):
 
 # Streamlit UI設定
 st.set_page_config(page_title="日記生成アプリ", layout="centered")
-st.title("📘 日記生成アプリ（GPT-3.5 Turbo）")
+st.markdown("""
+<style>
+
+/* 全体背景 */
+.stApp {
+    background: linear-gradient(135deg, #1e1e2f, #2b2b45);
+    color: white;
+}
+
+/* 中央コンテナ幅 */
+.block-container {
+    max-width: 480px;
+    padding-top: 2rem;
+}
+
+/* カード風ボックス */
+.card {
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
+}
+
+/* ボタン */
+.stButton>button {
+    width: 100%;
+    border-radius: 15px;
+    height: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(90deg,#6a5acd,#00c9ff);
+    color: white;
+    border: none;
+}
+
+/* テキストエリア */
+textarea {
+    border-radius: 15px !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 # 日記データの初期化
 if "questions" not in st.session_state:
@@ -103,4 +146,5 @@ if st.session_state.saved_diaries:
     st.text_area("選択した日記：", value=st.session_state.saved_diaries[selected_date], height=200)
 else:
     st.info("まだ保存された日記がありません。")
+
 
