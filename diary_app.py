@@ -39,12 +39,78 @@ def save_json(file, data):
 # =============================
 st.set_page_config(page_title="AI Diary", layout="centered")
 
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(135deg, #1e1e2f, #2b2b45);
+    color: white;
+}
+
+.block-container {
+    max-width: 480px;
+    padding-top: 2rem;
+}
+
+.card {
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.stButton > button,
+.stDownloadButton > button {
+    width: 100%;
+    border-radius: 15px;
+    height: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(90deg,#6a5acd,#00c9ff) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    background: linear-gradient(90deg,#7b6cff,#33d6ff) !important;
+}
+
+.stTextArea textarea {
+    border-radius: 15px !important;
+    background-color: white !important;
+    color: black !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =============================
+# タイトル
+# =============================
+st.markdown("""
+<h1 style='text-align:center; font-weight:800; margin-bottom:0;'>
+🌙 AI Diary
+</h1>
+<p style='text-align:center; opacity:0.7; margin-top:5px; margin-bottom:30px;'>
+今日の気持ちを、物語に。
+</p>
+""", unsafe_allow_html=True)
+
 # =============================
 # ログインUI
 # =============================
 users = load_json(USER_FILE)
 
-st.markdown("## 🔐 ログイン / 新規登録")
+st.markdown('<div class="card">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">🔐 ログイン / 新規登録</div>', unsafe_allow_html=True)
 
 username = st.text_input("ユーザー名")
 password = st.text_input("パスワード", type="password")
@@ -72,32 +138,40 @@ if register:
         save_json(USER_FILE, users)
         st.success("登録完了！ログインしてください")
 
-# ログインしていない場合は停止
+st.markdown('</div>', unsafe_allow_html=True)
+
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 # =============================
-# ログイン後処理
+# ログイン後
 # =============================
-st.markdown(f"### 👋 ようこそ {st.session_state.username} さん")
+st.markdown(f"""
+<div style='text-align:center; margin-bottom:20px; opacity:0.8;'>
+👤 {st.session_state.username} でログイン中
+</div>
+""", unsafe_allow_html=True)
 
 diaries = load_json(DIARY_FILE)
-
 if st.session_state.username not in diaries:
     diaries[st.session_state.username] = {}
 
-# セッション初期化
 if "questions" not in st.session_state:
     st.session_state.questions = []
 if "diary" not in st.session_state:
     st.session_state.diary = ""
 
 # =============================
-# 出来事入力
+# 今日の出来事
 # =============================
-st.markdown("### 📝 今日の出来事")
+st.markdown('<div class="card">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📝 今日の出来事</div>', unsafe_allow_html=True)
 
-summary = st.text_area("")
+summary = st.text_area(
+    "",
+    placeholder="例）友達とカフェに行った。部活が大変だった…",
+    height=120
+)
 
 if st.button("✍️ 質問を作る") and summary.strip():
     with st.spinner("質問生成中..."):
@@ -118,13 +192,18 @@ if st.button("✍️ 質問を作る") and summary.strip():
             if q.strip()
         ]
 
+st.markdown('</div>', unsafe_allow_html=True)
+
 # =============================
 # 質問回答
 # =============================
 if st.session_state.questions:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📝 質問に答えてください</div>', unsafe_allow_html=True)
+
     answers = []
     for i, q in enumerate(st.session_state.questions):
-        st.write(q)
+        st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
         a = st.text_area("", key=f"answer_{i}")
         answers.append((q, a))
 
@@ -155,30 +234,37 @@ if st.session_state.questions:
 
             st.success("日記を保存しました！")
 
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # =============================
 # 日記表示
 # =============================
 if st.session_state.diary:
-    st.markdown("### 📘 あなたの日記")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📘 あなたの日記</div>', unsafe_allow_html=True)
+
     edited = st.text_area("", value=st.session_state.diary, height=200)
     st.session_state.diary = edited
 
     st.download_button(
-        "💾 テキスト保存",
+        "💾 日記を保存する（テキストファイル）",
         edited,
         file_name="my_diary.txt"
     )
 
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # =============================
 # 過去日記
 # =============================
-st.markdown("### 📚 過去の日記")
+st.markdown('<div class="card">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📚 過去の日記</div>', unsafe_allow_html=True)
 
 user_diaries = diaries[st.session_state.username]
 
 if user_diaries:
     selected_date = st.selectbox(
-        "日付を選択",
+        "",
         list(user_diaries.keys())[::-1]
     )
 
@@ -189,3 +275,5 @@ if user_diaries:
     )
 else:
     st.info("まだ日記がありません。")
+
+st.markdown('</div>', unsafe_allow_html=True)
