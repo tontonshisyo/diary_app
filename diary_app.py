@@ -16,7 +16,6 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 # SQLite設定
 # =============================
 DB_FILE = "diary.db"
-
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 c = conn.cursor()
 
@@ -54,9 +53,7 @@ def register_user(username, password):
 def check_user(username, password):
     c.execute("SELECT password FROM users WHERE username=?", (username,))
     row = c.fetchone()
-    if row and row[0] == hash_password(password):
-        return True
-    return False
+    return row and row[0] == hash_password(password)
 
 def save_diary(username, content):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -109,7 +106,9 @@ if login:
     if check_user(username, password):
         st.session_state.logged_in = True
         st.session_state.username = username
+        st.session_state.step = "input_summary"
         st.success("ログイン成功！")
+        st.experimental_rerun()
     else:
         st.error("ユーザー名またはパスワードが違います")
 
@@ -176,13 +175,14 @@ if st.session_state.step == "input_summary":
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
             )
-            questions_text = response.choices[0].message.content
+            questions_text = response.choices[0].message["content"]
             st.session_state.first_questions = [
                 q.strip("0123456789. ").strip()
                 for q in questions_text.split("\n") if q.strip()
             ]
             st.session_state.first_answers = [""] * len(st.session_state.first_questions)
             st.session_state.step = "first_q"
+        st.experimental_rerun()
 
     if generate_diary_direct and summary.strip():
         st.session_state.summary = summary
@@ -201,10 +201,11 @@ if st.session_state.step == "input_summary":
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": diary_prompt}],
             )
-            st.session_state.diary = response.choices[0].message.content
+            st.session_state.diary = response.choices[0].message["content"]
             save_diary(st.session_state.username, st.session_state.diary)
             st.session_state.step = "diary"
         st.success("日記を保存しました！")
+        st.experimental_rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -222,7 +223,7 @@ if user_diaries:
         sorted_dates,
         key="selected_date"
     )
-    diary_text = next(c for dt, c in user_diaries if dt == selected_date)
+    diary_text = next(content for dt, content in user_diaries if dt == selected_date)
 
     st.text_area(
         "",
