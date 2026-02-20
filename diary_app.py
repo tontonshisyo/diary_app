@@ -47,15 +47,27 @@ st.markdown("""
     margin-bottom: 20px;
 }
 
-.stButton>button {
+.stButton > button {
     width: 100%;
     border-radius: 15px;
     height: 50px;
     font-size: 16px;
     font-weight: 600;
-    background: linear-gradient(90deg,#6a5acd,#00c9ff);
-    color: white;
-    border: none;
+    background: linear-gradient(90deg,#6a5acd,#00c9ff) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* hover時 */
+.stButton > button:hover {
+    background: linear-gradient(90deg,#7b6cff,#33d6ff) !important;
+    color: white !important;
+}
+
+/* クリック時 */
+.stButton > button:active {
+    transform: scale(0.98);
 }
 
 .stTextArea textarea {
@@ -204,4 +216,5 @@ else:
     st.info("まだ保存された日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
