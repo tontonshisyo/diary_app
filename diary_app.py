@@ -41,43 +41,12 @@ st.set_page_config(page_title="AI Diary", layout="centered")
 
 st.markdown("""
 <style>
-.stApp {
-    background: linear-gradient(135deg, #1e1e2f, #2b2b45);
-    color: white;
-}
-.block-container {
-    max-width: 480px;
-    padding-top: 2rem;
-}
-.card {
-    background: rgba(255,255,255,0.05);
-    padding: 20px;
-    border-radius: 20px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    margin-bottom: 20px;
-}
-.section-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-.stButton > button,
-.stDownloadButton > button {
-    width: 100%;
-    border-radius: 15px;
-    height: 50px;
-    font-size: 16px;
-    font-weight: 600;
-    background: linear-gradient(90deg,#6a5acd,#00c9ff) !important;
-    color: white !important;
-    border: none !important;
-}
-.stTextArea textarea {
-    border-radius: 15px !important;
-    background-color: white !important;
-    color: black !important;
-}
+.stApp { background: linear-gradient(135deg, #1e1e2f, #2b2b45); color: white; }
+.block-container { max-width: 480px; padding-top: 2rem; }
+.card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); margin-bottom: 20px; }
+.section-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+.stButton > button, .stDownloadButton > button { width: 100%; border-radius: 15px; height: 50px; font-size: 16px; font-weight: 600; background: linear-gradient(90deg,#6a5acd,#00c9ff) !important; color: white !important; border: none !important; }
+.stTextArea textarea { border-radius: 15px !important; background-color: white !important; color: black !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -136,6 +105,8 @@ if st.session_state.username not in diaries:
 
 if "questions" not in st.session_state:
     st.session_state.questions = []
+if "answers" not in st.session_state:
+    st.session_state.answers = [""] * 4
 if "diary" not in st.session_state:
     st.session_state.diary = ""
 
@@ -172,6 +143,7 @@ if st.button("✍️ 質問を作る", key="generate_questions"):
                 for q in questions_text.split("\n")
                 if q.strip()
             ]
+            st.session_state.answers = [""] * len(st.session_state.questions)  # 初期化
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -182,15 +154,18 @@ if st.session_state.questions:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">📝 質問に答えてください</div>', unsafe_allow_html=True)
 
-    answers = []
+    # text_area をセッションステートと連携
     for i, q in enumerate(st.session_state.questions):
         st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
-        a = st.text_area("", key=f"answer_{i}")
-        answers.append((q, a))
+        st.session_state.answers[i] = st.text_area(
+            "",
+            value=st.session_state.answers[i],
+            key=f"answer_{i}"
+        )
 
     if st.button("📓 日記を生成する", key="generate_diary"):
         with st.spinner("生成中..."):
-            qna_text = "\n".join([f"{q} {a}" for q, a in answers])
+            qna_text = "\n".join([f"{q} {a}" for q, a in zip(st.session_state.questions, st.session_state.answers)])
             diary_prompt = f"""
 出来事: {summary}
 
@@ -214,11 +189,10 @@ if st.session_state.questions:
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": diary_prompt}],
             )
-            diary = diary_response.choices[0].message.content
-            st.session_state.diary = diary
+            st.session_state.diary = diary_response.choices[0].message.content
 
             today = datetime.today().strftime("%Y-%m-%d %H:%M")
-            diaries[st.session_state.username][today] = diary
+            diaries[st.session_state.username][today] = st.session_state.diary
             save_json(DIARY_FILE, diaries)
 
             st.success("日記を保存しました！")
@@ -254,12 +228,14 @@ if st.session_state.diary:
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">📚 過去の日記</div>', unsafe_allow_html=True)
 
-user_diaries = diaries[st.session_state.username]
+user_diaries = diaries.get(st.session_state.username, {})
 
 if user_diaries:
+    # 日付順（降順）にソート
+    sorted_dates = sorted(user_diaries.keys(), reverse=True)
     selected_date = st.selectbox(
         "",
-        list(user_diaries.keys())[::-1],
+        sorted_dates,
         key="selected_date"
     )
 
@@ -273,6 +249,3 @@ else:
     st.info("まだ日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
-
-
-
