@@ -129,27 +129,56 @@ if st.session_state.step == "input_summary":
         key="summary_input"
     )
 
-    if st.button("✍️ 質問を作る", key="generate_first_questions"):
-        if summary.strip():
-            st.session_state.summary = summary
-            with st.spinner("質問生成中..."):
-                prompt = f"""
+    col1, col2 = st.columns(2)
+    with col1:
+        generate_questions = st.button("✍️ 質問を作る", key="generate_first_questions")
+    with col2:
+        generate_diary_direct = st.button("📓 そのまま日記生成", key="generate_diary_direct")
+
+    if generate_questions and summary.strip():
+        st.session_state.summary = summary
+        with st.spinner("質問生成中..."):
+            prompt = f"""
 出来事: {summary}
 
 この出来事を日記にするための基本的な質問を作ってください。
 「何をした」「誰と話した」「印象に残った出来事は」「気持ちはどうだった」など、事実を聞く質問を4つ作ってください。
 """
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                questions_text = response.choices[0].message.content
-                st.session_state.first_questions = [
-                    q.strip("0123456789. ").strip()
-                    for q in questions_text.split("\n") if q.strip()
-                ]
-                st.session_state.first_answers = [""] * len(st.session_state.first_questions)
-                st.session_state.step = "first_q"
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            questions_text = response.choices[0].message.content
+            st.session_state.first_questions = [
+                q.strip("0123456789. ").strip()
+                for q in questions_text.split("\n") if q.strip()
+            ]
+            st.session_state.first_answers = [""] * len(st.session_state.first_questions)
+            st.session_state.step = "first_q"
+
+    if generate_diary_direct and summary.strip():
+        st.session_state.summary = summary
+        with st.spinner("日記生成中..."):
+            diary_prompt = f"""
+出来事: {summary}
+
+この出来事を元に、今日の感情や空気感も含めた日記を書いてください。
+・出来事を整理するだけでなく、空気や感情が伝わる文章にしてください。
+・その時の言葉や思考も自然に含めてください。
+・身体の感覚や音・空気感も描写してください。
+・少し迷いや揺れを残す文章にしてください。
+・未来の自分が読んで情景を思い出せる文章にしてください。
+"""
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": diary_prompt}],
+            )
+            st.session_state.diary = response.choices[0].message.content
+            today = datetime.today().strftime("%Y-%m-%d %H:%M")
+            diaries[st.session_state.username][today] = st.session_state.diary
+            save_json(DIARY_FILE, diaries)
+            st.session_state.step = "diary"
+        st.success("日記を保存しました！")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -168,7 +197,13 @@ if st.session_state.step == "first_q":
             key=f"first_answer_{i}"
         )
 
-    if st.button("➡ 深掘り質問を作る", key="generate_deep_questions"):
+    col1, col2 = st.columns(2)
+    with col1:
+        generate_deep = st.button("➡ 深掘り質問を作る", key="generate_deep_questions")
+    with col2:
+        generate_diary_from_first = st.button("📓 このまま日記生成", key="generate_diary_from_first")
+
+    if generate_deep:
         with st.spinner("深掘り質問生成中..."):
             first_qna_text = "\n".join([f"{q} {a}" for q, a in zip(st.session_state.first_questions, st.session_state.first_answers)])
             prompt = f"""
@@ -190,6 +225,34 @@ if st.session_state.step == "first_q":
             ]
             st.session_state.deep_answers = [""] * len(st.session_state.deep_questions)
             st.session_state.step = "deep_q"
+
+    if generate_diary_from_first:
+        with st.spinner("日記生成中..."):
+            first_qna_text = "\n".join([f"{q} {a}" for q, a in zip(st.session_state.first_questions, st.session_state.first_answers)])
+            diary_prompt = f"""
+出来事: {st.session_state.summary}
+
+質問と回答:
+{first_qna_text}
+
+これらの回答から日記を書いてください。
+
+・出来事を整理するだけでなく、空気や感情が伝わる文章にしてください。
+・その時の言葉や思考も自然に含めてください。
+・身体の感覚や音・空気感も描写してください。
+・少し迷いや揺れを残す文章にしてください。
+・未来の自分が読んで情景を思い出せる文章にしてください。
+"""
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": diary_prompt}],
+            )
+            st.session_state.diary = response.choices[0].message.content
+            today = datetime.today().strftime("%Y-%m-%d %H:%M")
+            diaries[st.session_state.username][today] = st.session_state.diary
+            save_json(DIARY_FILE, diaries)
+            st.session_state.step = "diary"
+        st.success("日記を保存しました！")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
