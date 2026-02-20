@@ -50,16 +50,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# =============================
-# タイトル
-# =============================
 st.markdown("""
 <h1 style='text-align:center; font-weight:800;'>🌙 AI Diary</h1>
 <p style='text-align:center; opacity:0.7;'>今日の気持ちを、物語に。</p>
 """, unsafe_allow_html=True)
 
 # =============================
-# ログインUI
+# ログイン処理
 # =============================
 users = load_json(USER_FILE)
 
@@ -92,7 +89,6 @@ if register:
         st.success("登録完了！ログインしてください")
 
 st.markdown('</div>', unsafe_allow_html=True)
-
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
@@ -103,118 +99,150 @@ diaries = load_json(DIARY_FILE)
 if st.session_state.username not in diaries:
     diaries[st.session_state.username] = {}
 
-if "questions" not in st.session_state:
-    st.session_state.questions = []
-if "answers" not in st.session_state:
-    st.session_state.answers = []
+# セッションステート初期化
+if "step" not in st.session_state:
+    st.session_state.step = "input_summary"  # input_summary → first_q → first_a → deep_q → deep_a → diary
+if "summary" not in st.session_state:
+    st.session_state.summary = ""
+if "first_questions" not in st.session_state:
+    st.session_state.first_questions = []
+if "first_answers" not in st.session_state:
+    st.session_state.first_answers = []
+if "deep_questions" not in st.session_state:
+    st.session_state.deep_questions = []
+if "deep_answers" not in st.session_state:
+    st.session_state.deep_answers = []
 if "diary" not in st.session_state:
     st.session_state.diary = ""
-if "generate_diary_flag" not in st.session_state:
-    st.session_state.generate_diary_flag = False
 
 # =============================
-# 今日の出来事
+# 今日の出来事入力
 # =============================
-st.markdown('<div class="card">', unsafe_allow_html=True)
-st.markdown('<div class="section-title">📝 今日の出来事</div>', unsafe_allow_html=True)
+if st.session_state.step == "input_summary":
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📝 今日の出来事</div>', unsafe_allow_html=True)
 
-summary = st.text_area(
-    "",
-    placeholder="例）友達とカフェに行った。部活が大変だった…",
-    height=120,
-    key="summary_input"
-)
+    summary = st.text_area(
+        "",
+        placeholder="例）友達とカフェに行った。部活が大変だった…",
+        height=120,
+        key="summary_input"
+    )
 
-if st.button("✍️ 質問を作る", key="generate_questions"):
-    if summary.strip():
-        with st.spinner("質問生成中..."):
-            prompt = f"""
+    if st.button("✍️ 質問を作る", key="generate_first_questions"):
+        if summary.strip():
+            st.session_state.summary = summary
+            with st.spinner("質問生成中..."):
+                prompt = f"""
 出来事: {summary}
 
-この出来事を日記にするための質問を4つ作ってください。
-以下をそれぞれ1問ずつ含めてください：
-・具体的な会話や言葉
-・その瞬間の感情
-・身体や空気感
-・迷いや考えていたこと
+この出来事を日記にするための基本的な質問を作ってください。
+「何をした」「誰と話した」「印象に残った出来事は」「気持ちはどうだった」など、事実を聞く質問を4つ作ってください。
+"""
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                questions_text = response.choices[0].message.content
+                st.session_state.first_questions = [
+                    q.strip("0123456789. ").strip()
+                    for q in questions_text.split("\n") if q.strip()
+                ]
+                st.session_state.first_answers = [""] * len(st.session_state.first_questions)
+                st.session_state.step = "first_q"
 
-抽象的にせず、情景が浮かぶ問いにしてください。
-各質問は1文で簡潔に。
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# =============================
+# 一次質問回答
+# =============================
+if st.session_state.step == "first_q":
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📝 基本質問に答えてください</div>', unsafe_allow_html=True)
+
+    for i, q in enumerate(st.session_state.first_questions):
+        st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
+        st.session_state.first_answers[i] = st.text_area(
+            "",
+            value=st.session_state.first_answers[i],
+            key=f"first_answer_{i}"
+        )
+
+    if st.button("➡ 深掘り質問を作る", key="generate_deep_questions"):
+        with st.spinner("深掘り質問生成中..."):
+            first_qna_text = "\n".join([f"{q} {a}" for q, a in zip(st.session_state.first_questions, st.session_state.first_answers)])
+            prompt = f"""
+一次回答:
+{first_qna_text}
+
+この回答をもとに、感情・身体感覚・空気感・迷いなどを引き出す深掘り質問を作ってください。
+それぞれの質問は具体的で、今日の出来事に沿ったものにしてください。
+4問程度作成してください。
 """
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
             )
             questions_text = response.choices[0].message.content
-            st.session_state.questions = [
+            st.session_state.deep_questions = [
                 q.strip("0123456789. ").strip()
-                for q in questions_text.split("\n")
-                if q.strip()
+                for q in questions_text.split("\n") if q.strip()
             ]
-            st.session_state.answers = [""] * len(st.session_state.questions)
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# =============================
-# 質問回答
-# =============================
-if st.session_state.questions:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">📝 質問に答えてください</div>', unsafe_allow_html=True)
-
-    for i, q in enumerate(st.session_state.questions):
-        st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
-        st.session_state.answers[i] = st.text_area(
-            "",
-            value=st.session_state.answers[i],
-            key=f"answer_{i}"
-        )
-
-    if st.button("📓 日記を生成する", key="generate_diary"):
-        st.session_state.generate_diary_flag = True
-
-    # フラグが立っていたら日記生成
-    if st.session_state.generate_diary_flag:
-        with st.spinner("生成中..."):
-            qna_text = "\n".join([f"{q} {a}" for q, a in zip(st.session_state.questions, st.session_state.answers)])
-            diary_prompt = f"""
-出来事: {summary}
-
-質問と回答:
-{qna_text}
-
-回答から日記を書いてください。
-
-・出来事をそのまま整理するのではなく、
-  その場の空気や感情の流れが伝わる文章にしてください。
-
-・実際の言葉や、そのとき頭の中で思っていたことも自然に含めてください。
-
-・感情だけでなく、身体の感覚や音・空気感なども描写してください。
-
-・うまくまとめすぎず、少し揺れや迷いが残る書き方にしてください。
-
-・読み物として自然で、未来の自分が読んで情景を思い出せる文章にしてください。
-"""
-            diary_response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": diary_prompt}],
-            )
-            st.session_state.diary = diary_response.choices[0].message.content
-
-            today = datetime.today().strftime("%Y-%m-%d %H:%M")
-            diaries[st.session_state.username][today] = st.session_state.diary
-            save_json(DIARY_FILE, diaries)
-
-        st.session_state.generate_diary_flag = False
-        st.success("日記を保存しました！")
+            st.session_state.deep_answers = [""] * len(st.session_state.deep_questions)
+            st.session_state.step = "deep_q"
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =============================
+# 深掘り質問回答
+# =============================
+if st.session_state.step == "deep_q":
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📝 深掘り質問に答えてください</div>', unsafe_allow_html=True)
+
+    for i, q in enumerate(st.session_state.deep_questions):
+        st.markdown(f"<div class='section-title'>{q}</div>", unsafe_allow_html=True)
+        st.session_state.deep_answers[i] = st.text_area(
+            "",
+            value=st.session_state.deep_answers[i],
+            key=f"deep_answer_{i}"
+        )
+
+    if st.button("📓 日記を生成する", key="generate_final_diary"):
+        with st.spinner("日記生成中..."):
+            all_qna_text = "\n".join(
+                [f"{q} {a}" for q, a in zip(st.session_state.first_questions + st.session_state.deep_questions,
+                                            st.session_state.first_answers + st.session_state.deep_answers)]
+            )
+            diary_prompt = f"""
+出来事: {st.session_state.summary}
+
+質問と回答:
+{all_qna_text}
+
+これらの回答から日記を書いてください。
+
+・出来事を整理するだけでなく、空気や感情が伝わる文章にしてください。
+・その時の言葉や思考も自然に含めてください。
+・身体の感覚や音・空気感も描写してください。
+・少し迷いや揺れを残す文章にしてください。
+・未来の自分が読んで情景を思い出せる文章にしてください。
+"""
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": diary_prompt}],
+            )
+            st.session_state.diary = response.choices[0].message.content
+            today = datetime.today().strftime("%Y-%m-%d %H:%M")
+            diaries[st.session_state.username][today] = st.session_state.diary
+            save_json(DIARY_FILE, diaries)
+            st.session_state.step = "diary"
+        st.success("日記を保存しました！")
+
+# =============================
 # 日記表示
 # =============================
-if st.session_state.diary:
+if st.session_state.step == "diary" and st.session_state.diary:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">📘 あなたの日記</div>', unsafe_allow_html=True)
 
@@ -235,13 +263,12 @@ if st.session_state.diary:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =============================
-# 過去日記
+# 過去日記表示
 # =============================
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">📚 過去の日記</div>', unsafe_allow_html=True)
 
 user_diaries = diaries.get(st.session_state.username, {})
-
 if user_diaries:
     sorted_dates = sorted(user_diaries.keys(), reverse=True)
     selected_date = st.selectbox(
