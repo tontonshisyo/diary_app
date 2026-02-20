@@ -92,59 +92,54 @@ st.markdown("""
 # =============================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "step" not in st.session_state:
+    st.session_state.step = "login"
 if "username" not in st.session_state:
     st.session_state.username = ""
-if "step" not in st.session_state:
-    st.session_state.step = "input_summary"
 if "summary" not in st.session_state:
     st.session_state.summary = ""
 if "first_questions" not in st.session_state:
     st.session_state.first_questions = []
 if "first_answers" not in st.session_state:
     st.session_state.first_answers = []
-if "deep_questions" not in st.session_state:
-    st.session_state.deep_questions = []
-if "deep_answers" not in st.session_state:
-    st.session_state.deep_answers = []
 if "diary" not in st.session_state:
     st.session_state.diary = ""
 
 # =============================
-# ログイン処理
+# ログイン画面
 # =============================
-st.markdown('<div class="card">', unsafe_allow_html=True)
-st.markdown('<div class="section-title">🔐 ログイン / 新規登録</div>', unsafe_allow_html=True)
-
-username_input = st.text_input("ユーザー名", key="login_username")
-password_input = st.text_input("パスワード", type="password", key="login_password")
-
-col1, col2 = st.columns(2)
-with col1:
-    login = st.button("ログイン", key="login_button")
-with col2:
-    register = st.button("新規登録", key="register_button")
-
-if login:
-    if check_user(username_input, password_input):
-        st.session_state.logged_in = True
-        st.session_state.username = username_input
-        st.session_state.step = "input_summary"
-        st.success("ログイン成功！")
-        st.experimental_rerun()
-    else:
-        st.error("ユーザー名またはパスワードが違います")
-
-if register:
-    c.execute("SELECT username FROM users WHERE username=?", (username_input,))
-    if c.fetchone():
-        st.error("そのユーザー名は既に存在します")
-    else:
-        register_user(username_input, password_input)
-        st.success("登録完了！ログインしてください")
-
-st.markdown('</div>', unsafe_allow_html=True)
-
 if not st.session_state.logged_in:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🔐 ログイン / 新規登録</div>', unsafe_allow_html=True)
+
+    username_input = st.text_input("ユーザー名", key="login_username")
+    password_input = st.text_input("パスワード", type="password", key="login_password")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        login = st.button("ログイン", key="login_button")
+    with col2:
+        register = st.button("新規登録", key="register_button")
+
+    if login:
+        if check_user(username_input, password_input):
+            st.session_state.logged_in = True
+            st.session_state.username = username_input
+            st.session_state.step = "input_summary"
+            st.success("ログイン成功！")
+            st.experimental_rerun()
+        else:
+            st.error("ユーザー名またはパスワードが違います")
+
+    if register:
+        c.execute("SELECT username FROM users WHERE username=?", (username_input,))
+        if c.fetchone():
+            st.error("そのユーザー名は既に存在します")
+        else:
+            register_user(username_input, password_input)
+            st.success("登録完了！ログインしてください")
+
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # =============================
@@ -167,6 +162,7 @@ if st.session_state.step == "input_summary":
     with col2:
         generate_diary_direct = st.button("📓 そのまま日記生成", key="generate_diary_direct")
 
+    # 質問生成
     if generate_questions and summary.strip():
         st.session_state.summary = summary
         with st.spinner("質問生成中..."):
@@ -180,7 +176,6 @@ if st.session_state.step == "input_summary":
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
             )
-            # 修正版：属性アクセス
             questions_text = response.choices[0].message.content
             st.session_state.first_questions = [
                 q.strip("0123456789. ").strip()
@@ -188,8 +183,8 @@ if st.session_state.step == "input_summary":
             ]
             st.session_state.first_answers = [""] * len(st.session_state.first_questions)
             st.session_state.step = "first_q"
-        st.experimental_rerun()
 
+    # 日記直接生成
     if generate_diary_direct and summary.strip():
         st.session_state.summary = summary
         with st.spinner("日記生成中..."):
@@ -210,8 +205,7 @@ if st.session_state.step == "input_summary":
             st.session_state.diary = response.choices[0].message.content
             save_diary(st.session_state.username, st.session_state.diary)
             st.session_state.step = "diary"
-        st.success("日記を保存しました！")
-        st.experimental_rerun()
+            st.success("日記を保存しました！")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
