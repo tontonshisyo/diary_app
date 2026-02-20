@@ -60,8 +60,8 @@ st.markdown("""
 
 .stTextArea textarea {
     border-radius: 15px !important;
-    background-color: rgba(255,255,255,0.08);
-    color: white !important;
+    background-color: white !important;
+    color: black !important;
 }
 
 .section-title {
@@ -204,3 +204,4 @@ else:
     st.info("まだ保存された日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
