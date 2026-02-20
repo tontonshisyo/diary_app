@@ -159,7 +159,7 @@ if st.button("✍️ 質問を作る", key="generate_questions"):
 出来事: {summary}
 
 日記作成用に具体的な質問を4つ作成。
-会話・感情・身体/空気・迷いを各1問。
+会話・感情・身体/空気・迷いを引き出す質問を各1問。
 抽象禁止。情景が浮かぶ形で、1問1文。
 """
             response = client.chat.completions.create(
@@ -263,4 +263,5 @@ else:
     st.info("まだ日記がありません。")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
