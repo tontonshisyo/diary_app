@@ -90,7 +90,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================
-# ログインUI
+# ログイン
 # =============================
 users = load_json(USER_FILE)
 
@@ -128,7 +128,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 # =============================
-# ログイン後処理
+# ログイン後初期化
 # =============================
 diaries = load_json(DIARY_FILE)
 if st.session_state.username not in diaries:
@@ -140,7 +140,7 @@ if "diary" not in st.session_state:
     st.session_state.diary = ""
 
 # =============================
-# 今日の出来事
+# 今日の出来事入力
 # =============================
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">📝 今日の出来事</div>', unsafe_allow_html=True)
@@ -155,18 +155,19 @@ summary = st.text_area(
 if st.button("✍️ 質問を作る", key="generate_questions"):
     if summary.strip():
         with st.spinner("質問生成中..."):
-            prompt = f"""
-以下の出来事を日記に書くために、質問を3つ作ってください。
-出来事: {summary}
-感情や背景を引き出す質問にしてください。
-"""
+            prompt = f"""出来事:{summary}
+事実→感情→意味の質問3つ＋今日の自分に一言。
+1行ずつ。"""
+
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
+                temperature=0.7
             )
+
             questions_text = response.choices[0].message.content
             st.session_state.questions = [
-                q.strip("0123456789. ").strip()
+                q.strip()
                 for q in questions_text.split("\n")
                 if q.strip()
             ]
@@ -188,20 +189,18 @@ if st.session_state.questions:
 
     if st.button("📓 日記を生成する", key="generate_diary"):
         with st.spinner("生成中..."):
-            qna_text = "\n".join([f"{q} {a}" for q, a in answers])
-            diary_prompt = f"""
-出来事: {summary}
+            qna_text = "\n".join([f"{q}:{a}" for q, a in answers])
 
-質問と回答:
+            diary_prompt = f"""出来事:{summary}
 {qna_text}
+自然な日記。ですます調。300字以内。"""
 
-自然で感情のこもった日記を書いてください。
-です・ます調で。
-"""
             diary_response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": diary_prompt}],
+                temperature=0.8
             )
+
             diary = diary_response.choices[0].message.content
             st.session_state.diary = diary
 
@@ -214,7 +213,7 @@ if st.session_state.questions:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =============================
-# 日記表示
+# 生成日記表示
 # =============================
 if st.session_state.diary:
     st.markdown('<div class="card">', unsafe_allow_html=True)
